@@ -66,6 +66,9 @@ export default (options) => {
                 paths = newPaths;
                 server.watcher.on('all', async (eventName, path) => {
                     if (eventName === 'add') {
+                        if ("close" in app && typeof (app.close) === "function") {
+                            app.close();
+                        }
                         const { newApp, newPaths } = await startApp(server, options);
                         if (arePathsDifferent(paths, newPaths)) {
                             app = newApp;
@@ -73,6 +76,9 @@ export default (options) => {
                         }
                     }
                     if (eventName === 'change' && paths.indexOf(path) >= 0) {
+                        if ("close" in app && typeof (app.close) === "function") {
+                            app.close();
+                        }
                         const { newApp } = await startApp(server, options);
                         app = newApp;
                     }
