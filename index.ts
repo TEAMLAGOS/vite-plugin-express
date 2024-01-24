@@ -90,12 +90,14 @@ export default (options: Options): Plugin => {
         server.middlewares.use((req, res, next) => app(req, res, next));
       }
       return async() => {
+        console.log(1)
         const {newApp, newPaths} = await startApp(server, options, app);
         app = newApp;
         paths = newPaths;
         
         server.watcher.on('all', async (eventName, path) => {
           if (eventName === 'add') {
+            console.log(2)
             const { newApp, newPaths } = await startApp(server, options, app);
             if (arePathsDifferent(paths, newPaths)) {
               app = newApp;
@@ -103,6 +105,7 @@ export default (options: Options): Plugin => {
             }
           }
           if (eventName === 'change' && paths.indexOf(path) >= 0) {
+            console.log(3)
             const { newApp } = await startApp(server, options, app);
             app = newApp;
           }
