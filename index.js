@@ -43,62 +43,42 @@ const startApp = async (server, options) => {
     }
 };
 export default (options) => {
+    let app;
     if (options.port) {
-        let app = express();
-        let paths = [];
-        return {
-            name: 'vite:middleware',
-            apply: 'serve',
-            configureServer: (server) => {
-                return async () => {
-                    const { newApp, newPaths } = await startApp(server, options);
-                    app = newApp;
-                    paths = newPaths;
-                    server.watcher.on('all', async (eventName, path) => {
-                        if (eventName === 'add') {
-                            const { newApp, newPaths } = await startApp(server, options);
-                            if (arePathsDifferent(paths, newPaths)) {
-                                app = newApp;
-                                paths = newPaths;
-                            }
-                        }
-                        if (eventName === 'change' && paths.indexOf(path) >= 0) {
-                            const { newApp } = await startApp(server, options);
-                            app = newApp;
-                        }
-                    });
-                };
-            }
-        };
+        let newApp = express();
+        app = newApp;
     }
     else {
-        let app = (req, res, next) => next();
-        let paths = [];
-        return {
-            name: 'vite:middleware',
-            apply: 'serve',
-            configureServer: (server) => {
-                server.middlewares.use((req, res, next) => app(req, res, next));
-                return async () => {
-                    const { newApp, newPaths } = await startApp(server, options);
-                    app = newApp;
-                    paths = newPaths;
-                    server.watcher.on('all', async (eventName, path) => {
-                        if (eventName === 'add') {
-                            const { newApp, newPaths } = await startApp(server, options);
-                            if (arePathsDifferent(paths, newPaths)) {
-                                app = newApp;
-                                paths = newPaths;
-                            }
-                        }
-                        if (eventName === 'change' && paths.indexOf(path) >= 0) {
-                            const { newApp } = await startApp(server, options);
-                            app = newApp;
-                        }
-                    });
-                };
-            },
-        };
+        let newApp = (req, res, next) => next();
+        app = newApp;
     }
+    let paths = [];
+    return {
+        name: 'vite:middleware',
+        apply: 'serve',
+        configureServer: (server) => {
+            if (!options.port) {
+                server.middlewares.use((req, res, next) => app(req, res, next));
+            }
+            return async () => {
+                const { newApp, newPaths } = await startApp(server, options);
+                app = newApp;
+                paths = newPaths;
+                server.watcher.on('all', async (eventName, path) => {
+                    if (eventName === 'add') {
+                        const { newApp, newPaths } = await startApp(server, options);
+                        if (arePathsDifferent(paths, newPaths)) {
+                            app = newApp;
+                            paths = newPaths;
+                        }
+                    }
+                    if (eventName === 'change' && paths.indexOf(path) >= 0) {
+                        const { newApp } = await startApp(server, options);
+                        app = newApp;
+                    }
+                });
+            };
+        }
+    };
 };
 //# sourceMappingURL=index.js.map
