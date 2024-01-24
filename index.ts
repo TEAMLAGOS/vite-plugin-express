@@ -29,9 +29,10 @@ const arePathsDifferent = (target: string[], source: string[]) => {
   return !target.every((path) => source.indexOf(path) >= 0);
 }
 
-const startApp = async (server: ViteDevServer, options: Options, existingApp?:Express|Connect.NextHandleFunction) => {
-  if(existingApp && "close" in existingApp && typeof(existingApp.close) === "function"){
+const startApp = async (server: ViteDevServer, options: Options, existingApp?: Express | Connect.NextHandleFunction) => {
+  if (existingApp && "close" in existingApp && typeof (existingApp.close) === "function") {
     await existingApp.close();
+    console.log('closed');
   }
   const app = express();
   const {
@@ -61,7 +62,12 @@ const startApp = async (server: ViteDevServer, options: Options, existingApp?:Ex
   }));
 
   if (options.port) {
-    app.listen(port, () => {console.log(`Listening on port ${port}...`)});
+    await new Promise<void>((res) => {
+      app.listen(port, () => {
+        console.log(`Listening on port ${port}...`);
+        res();
+      });
+    })
     return { newApp: app, newPaths: paths };
   }
   else {
@@ -70,13 +76,13 @@ const startApp = async (server: ViteDevServer, options: Options, existingApp?:Ex
 };
 
 export default (options: Options): Plugin => {
-  let app:Express | Connect.NextHandleFunction;
-  if(options.port){
-    let newApp:Express = express();
+  let app: Express | Connect.NextHandleFunction;
+  if (options.port) {
+    let newApp: Express = express();
     app = newApp;
   }
-  else{
-    let newApp:Connect.NextHandleFunction = (req, res, next) => next();
+  else {
+    let newApp: Connect.NextHandleFunction = (req, res, next) => next();
     app = newApp;
   }
 
@@ -85,16 +91,16 @@ export default (options: Options): Plugin => {
   return {
     name: 'vite:middleware',
     apply: 'serve',
-    configureServer:(server) => {
-      if(!options.port){
+    configureServer: (server) => {
+      if (!options.port) {
         server.middlewares.use((req, res, next) => app(req, res, next));
       }
-      return async() => {
+      return async () => {
         console.log(1)
-        const {newApp, newPaths} = await startApp(server, options, app);
+        const { newApp, newPaths } = await startApp(server, options, app);
         app = newApp;
         paths = newPaths;
-        
+
         server.watcher.on('all', async (eventName, path) => {
           if (eventName === 'add') {
             console.log(2)

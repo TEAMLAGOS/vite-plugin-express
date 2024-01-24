@@ -15,6 +15,7 @@ const arePathsDifferent = (target, source) => {
 const startApp = async (server, options, existingApp) => {
     if (existingApp && "close" in existingApp && typeof (existingApp.close) === "function") {
         await existingApp.close();
+        console.log('closed');
     }
     const app = express();
     const { middlewareFiles, prefixUrl = '/api', defaultMiddlewares, port } = options;
@@ -38,7 +39,12 @@ const startApp = async (server, options, existingApp) => {
         app.use(prefixUrl, (await server.ssrLoadModule(path)).default);
     }));
     if (options.port) {
-        app.listen(port, () => { console.log(`Listening on port ${port}...`); });
+        await new Promise((res) => {
+            app.listen(port, () => {
+                console.log(`Listening on port ${port}...`);
+                res();
+            });
+        });
         return { newApp: app, newPaths: paths };
     }
     else {
