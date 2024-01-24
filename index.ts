@@ -94,7 +94,7 @@ export default (options: Options): Plugin => {
         server.watcher.on('all', async (eventName, path) => {
           if (eventName === 'add') {
             if("close" in app && typeof(app['close']) === "function"){
-              app.close();
+              app['close']();
             }
             const { newApp, newPaths } = await startApp(server, options);
             if (arePathsDifferent(paths, newPaths)) {
@@ -104,7 +104,7 @@ export default (options: Options): Plugin => {
           }
           if (eventName === 'change' && paths.indexOf(path) >= 0) {
             if("close" in app && typeof(app['close']) === "function"){
-              app.close();
+              app['close']();
             }
             const { newApp } = await startApp(server, options);
             app = newApp;
