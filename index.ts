@@ -29,7 +29,10 @@ const arePathsDifferent = (target: string[], source: string[]) => {
   return !target.every((path) => source.indexOf(path) >= 0);
 }
 
-const startApp = async (server: ViteDevServer, options: Options) => {
+const startApp = async (server: ViteDevServer, options: Options, existingApp?:Express|Connect.NextHandleFunction) => {
+  if(existingApp && "close" in existingApp && typeof(existingApp.close) === "function"){
+    existingApp.close();
+  }
   const app = express();
   const {
     middlewareFiles,
@@ -67,8 +70,7 @@ const startApp = async (server: ViteDevServer, options: Options) => {
 };
 
 export default (options: Options): Plugin => {
-
-  let app:any;
+  let app:Express | Connect.NextHandleFunction;
   if(options.port){
     let newApp:Express = express();
     app = newApp;
@@ -88,26 +90,20 @@ export default (options: Options): Plugin => {
         server.middlewares.use((req, res, next) => app(req, res, next));
       }
       return async() => {
-        const {newApp, newPaths} = await startApp(server, options);
+        const {newApp, newPaths} = await startApp(server, options, app);
         app = newApp;
         paths = newPaths;
         
         server.watcher.on('all', async (eventName, path) => {
           if (eventName === 'add') {
-            if("close" in app){
-              app.close();
-            }
-            const { newApp, newPaths } = await startApp(server, options);
+            const { newApp, newPaths } = await startApp(server, options, app);
             if (arePathsDifferent(paths, newPaths)) {
               app = newApp;
               paths = newPaths;
             }
           }
           if (eventName === 'change' && paths.indexOf(path) >= 0) {
-            if("close" in app){
-              app.close();
-            }
-            const { newApp } = await startApp(server, options);
+            const { newApp } = await startApp(server, options, app);
             app = newApp;
           }
         });

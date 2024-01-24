@@ -12,7 +12,10 @@ const arePathsDifferent = (target, source) => {
     }
     return !target.every((path) => source.indexOf(path) >= 0);
 };
-const startApp = async (server, options) => {
+const startApp = async (server, options, existingApp) => {
+    if (existingApp && "close" in existingApp && typeof (existingApp.close) === "function") {
+        existingApp.close();
+    }
     const app = express();
     const { middlewareFiles, prefixUrl = '/api', defaultMiddlewares, port } = options;
     if (defaultMiddlewares) {
@@ -61,25 +64,19 @@ export default (options) => {
                 server.middlewares.use((req, res, next) => app(req, res, next));
             }
             return async () => {
-                const { newApp, newPaths } = await startApp(server, options);
+                const { newApp, newPaths } = await startApp(server, options, app);
                 app = newApp;
                 paths = newPaths;
                 server.watcher.on('all', async (eventName, path) => {
                     if (eventName === 'add') {
-                        if ("close" in app) {
-                            app.close();
-                        }
-                        const { newApp, newPaths } = await startApp(server, options);
+                        const { newApp, newPaths } = await startApp(server, options, app);
                         if (arePathsDifferent(paths, newPaths)) {
                             app = newApp;
                             paths = newPaths;
                         }
                     }
                     if (eventName === 'change' && paths.indexOf(path) >= 0) {
-                        if ("close" in app) {
-                            app.close();
-                        }
-                        const { newApp } = await startApp(server, options);
+                        const { newApp } = await startApp(server, options, app);
                         app = newApp;
                     }
                 });
