@@ -12,11 +12,7 @@ const arePathsDifferent = (target, source) => {
     }
     return !target.every((path) => source.indexOf(path) >= 0);
 };
-const startApp = async (server, options, existingApp) => {
-    if (existingApp && "close" in existingApp && typeof (existingApp.close) === "function") {
-        await existingApp.close();
-        console.log('closed');
-    }
+const startApp = async (server, options) => {
     const app = express();
     const { middlewareFiles, prefixUrl = '/api', defaultMiddlewares, port } = options;
     if (defaultMiddlewares) {
@@ -39,13 +35,10 @@ const startApp = async (server, options, existingApp) => {
         app.use(prefixUrl, (await server.ssrLoadModule(path)).default);
     }));
     if (options.port) {
-        await new Promise((res) => {
-            app.listen(port, () => {
-                console.log(`Listening on port ${port}...`);
-                res();
-            });
+        let server = app.listen(port, () => {
+            console.log(`Listening on port ${port}...`);
         });
-        return { newApp: app, newPaths: paths };
+        return { newApp: app, newPaths: paths, currentServer: server };
     }
     else {
         return { newApp: app, newPaths: paths };
@@ -62,6 +55,7 @@ export default (options) => {
         app = newApp;
     }
     let paths = [];
+    let currServer;
     return {
         name: 'vite:middleware',
         apply: 'serve',
@@ -70,23 +64,29 @@ export default (options) => {
                 server.middlewares.use((req, res, next) => app(req, res, next));
             }
             return async () => {
-                console.log(1);
-                const { newApp, newPaths } = await startApp(server, options, app);
+                const { newApp, newPaths, currentServer } = await startApp(server, options);
                 app = newApp;
                 paths = newPaths;
+                currServer = currentServer;
                 server.watcher.on('all', async (eventName, path) => {
                     if (eventName === 'add') {
-                        console.log(2);
-                        const { newApp, newPaths } = await startApp(server, options, app);
+                        if (currServer) {
+                            currServer.close();
+                        }
+                        const { newApp, newPaths, currentServer } = await startApp(server, options);
+                        currServer = currentServer;
                         if (arePathsDifferent(paths, newPaths)) {
                             app = newApp;
                             paths = newPaths;
                         }
                     }
                     if (eventName === 'change' && paths.indexOf(path) >= 0) {
-                        console.log(3);
-                        const { newApp } = await startApp(server, options, app);
+                        if (currServer) {
+                            currServer.close();
+                        }
+                        const { newApp, currentServer } = await startApp(server, options);
                         app = newApp;
+                        currServer = currentServer;
                     }
                 });
             };
