@@ -35,7 +35,7 @@ const startApp = async (server, options) => {
         app.use(prefixUrl, (await server.ssrLoadModule(path)).default);
     }));
     if (options.port) {
-        app.listen(port, () => { `Listening on port ${port}...`; });
+        app.listen(port, () => { console.log(`Listening on port ${port}...`); });
         return { newApp: app, newPaths: paths };
     }
     else {
@@ -45,13 +45,28 @@ const startApp = async (server, options) => {
 export default (options) => {
     if (options.port) {
         let app = express();
+        let paths = [];
         return {
             name: 'vite:middleware',
             apply: 'serve',
             configureServer: (server) => {
                 return async () => {
-                    const { newApp } = await startApp(server, options);
+                    const { newApp, newPaths } = await startApp(server, options);
                     app = newApp;
+                    paths = newPaths;
+                    server.watcher.on('all', async (eventName, path) => {
+                        if (eventName === 'add') {
+                            const { newApp, newPaths } = await startApp(server, options);
+                            if (arePathsDifferent(paths, newPaths)) {
+                                app = newApp;
+                                paths = newPaths;
+                            }
+                        }
+                        if (eventName === 'change' && paths.indexOf(path) >= 0) {
+                            const { newApp } = await startApp(server, options);
+                            app = newApp;
+                        }
+                    });
                 };
             }
         };
