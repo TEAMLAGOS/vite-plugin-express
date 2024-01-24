@@ -67,7 +67,8 @@ const startApp = async (server: ViteDevServer, options: Options) => {
 };
 
 export default (options: Options): Plugin => {
-  let app: Express | Connect.NextHandleFunction;
+
+  let app:any;
   if(options.port){
     let newApp:Express = express();
     app = newApp;
@@ -93,7 +94,7 @@ export default (options: Options): Plugin => {
         
         server.watcher.on('all', async (eventName, path) => {
           if (eventName === 'add') {
-            if("close" in app && typeof(app['close']) === "function"){
+            if("close" in app){
               app.close();
             }
             const { newApp, newPaths } = await startApp(server, options);
@@ -103,7 +104,7 @@ export default (options: Options): Plugin => {
             }
           }
           if (eventName === 'change' && paths.indexOf(path) >= 0) {
-            if("close" in app && typeof(app['close']) === "function"){
+            if("close" in app){
               app.close();
             }
             const { newApp } = await startApp(server, options);
