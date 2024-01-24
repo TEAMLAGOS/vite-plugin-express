@@ -14,7 +14,7 @@ const arePathsDifferent = (target, source) => {
 };
 const startApp = async (server, options, existingApp) => {
     if (existingApp && "close" in existingApp && typeof (existingApp.close) === "function") {
-        existingApp.close();
+        await existingApp.close();
     }
     const app = express();
     const { middlewareFiles, prefixUrl = '/api', defaultMiddlewares, port } = options;

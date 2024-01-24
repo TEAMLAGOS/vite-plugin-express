@@ -31,7 +31,7 @@ const arePathsDifferent = (target: string[], source: string[]) => {
 
 const startApp = async (server: ViteDevServer, options: Options, existingApp?:Express|Connect.NextHandleFunction) => {
   if(existingApp && "close" in existingApp && typeof(existingApp.close) === "function"){
-    existingApp.close();
+    await existingApp.close();
   }
   const app = express();
   const {
