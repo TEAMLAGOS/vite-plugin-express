@@ -67,61 +67,44 @@ const startApp = async (server: ViteDevServer, options: Options) => {
 };
 
 export default (options: Options): Plugin => {
-  if (options.port) {
-    let app:Express = express();
-    let paths: string[] = [];
-    return {
-      name: 'vite:middleware',
-      apply: 'serve',
-      configureServer:(server) => {
-        return async() => {
-          const {newApp, newPaths} =  await startApp(server, options);
-          app = newApp;
-          paths = newPaths;
-          server.watcher.on('all', async (eventName, path) => {
-            if (eventName === 'add') {
-              const { newApp, newPaths } = await startApp(server, options);
-              if (arePathsDifferent(paths, newPaths)) {
-                app = newApp;
-                paths = newPaths;
-              }
-            }
-            if (eventName === 'change' && paths.indexOf(path) >= 0) {
-              const { newApp } = await startApp(server, options);
+  let app: Express | Connect.NextHandleFunction;
+  if(options.port){
+    let newApp:Express = express();
+    app = newApp;
+  }
+  else{
+    let newApp:Connect.NextHandleFunction = (req, res, next) => next();
+    app = newApp;
+  }
+
+  let paths: string[] = [];
+
+  return {
+    name: 'vite:middleware',
+    apply: 'serve',
+    configureServer:(server) => {
+      if(!options.port){
+        server.middlewares.use((req, res, next) => app(req, res, next));
+      }
+      return async() => {
+        const {newApp, newPaths} =  await startApp(server, options);
+        app = newApp;
+        paths = newPaths;
+        
+        server.watcher.on('all', async (eventName, path) => {
+          if (eventName === 'add') {
+            const { newApp, newPaths } = await startApp(server, options);
+            if (arePathsDifferent(paths, newPaths)) {
               app = newApp;
+              paths = newPaths;
             }
-          });
-        }
+          }
+          if (eventName === 'change' && paths.indexOf(path) >= 0) {
+            const { newApp } = await startApp(server, options);
+            app = newApp;
+          }
+        });
       }
     }
-  }
-  else {
-    let app: Connect.NextHandleFunction = (req, res, next) => next();
-    let paths: string[] = [];
-    return {
-      name: 'vite:middleware',
-      apply: 'serve',
-      configureServer: (server) => {
-        server.middlewares.use((req, res, next) => app(req, res, next));
-        return async () => {
-          const { newApp, newPaths } = await startApp(server, options);
-          app = newApp;
-          paths = newPaths;
-          server.watcher.on('all', async (eventName, path) => {
-            if (eventName === 'add') {
-              const { newApp, newPaths } = await startApp(server, options);
-              if (arePathsDifferent(paths, newPaths)) {
-                app = newApp;
-                paths = newPaths;
-              }
-            }
-            if (eventName === 'change' && paths.indexOf(path) >= 0) {
-              const { newApp } = await startApp(server, options);
-              app = newApp;
-            }
-          });
-        }
-      },
-    };
   }
 }
